@@ -1,0 +1,3 @@
+- [] zmien w dockerach path dla dist/nazwa apki
+- [] dodaj scripts dla dockera w bun
+- [] napisz cdk

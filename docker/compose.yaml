@@ -1,0 +1,14 @@
+name: bun-cdk
+services:
+  auth:
+    build:
+      context: ../
+      dockerfile: ./docker/auth-service.dockerfile
+    ports:
+      - "3000:3000"
+  stripe:
+    build:
+      context: ../
+      dockerfile: ./docker/stripe-service.dockerfile
+    ports:
+      - "3001:3001"

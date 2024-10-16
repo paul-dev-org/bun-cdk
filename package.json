@@ -1,0 +1,24 @@
+{
+    "name": "bun-cdk",
+    "module": "index.ts",
+    "type": "module",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "format": "prettier --write .",
+        "lint": "eslint .",
+    },
+    "workspaces": [
+        "apps/*",
+        "infra/",
+        "common/*"
+    ],
+    "devDependencies": {
+        "@types/bun": "latest",
+        "eslint": "^9.12.0",
+        "prettier": "^3.3.3",
+        "typescript-eslint": "^8.9.0"
+    },
+    "peerDependencies": {
+        "typescript": "^5.0.0"
+    }
+}
