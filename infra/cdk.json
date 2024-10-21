@@ -1,5 +1,5 @@
 {
-    "app": "bunx ts-node --prefer-ts-exts index.ts",
+    "app": "bun run ./src/index.ts",
     "watch": {
         "include": ["**"],
         "exclude": [
