@@ -4,8 +4,18 @@ import * as cdk from "aws-cdk-lib";
 import { EcsStack} from "./stacks/ecs-stack";
 import { ContainerImage } from "aws-cdk-lib/aws-ecs";
 import { join } from "path";
+import { EcrStack } from "./stacks/ecr-stack";
+import { GithubOidc } from "./stacks/github-oidc";
 
 const app = new cdk.App();
+
+const ecrs = new EcrStack(app, "BunCdkEcrStack", {
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION,
+    },
+});
+
 new EcsStack(app, "BunCdkStack", {
     env: {
         account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -25,4 +35,18 @@ new EcsStack(app, "BunCdkStack", {
         containerPort: 3001,
         containerImage: ContainerImage.fromAsset(join(__dirname, "../../apps/stripe-service")),
     },
+    ecrs,
+});
+
+new GithubOidc(app, "BunCdkGithubOidc", {
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION,
+    },
+    repositoryConfig: [
+        {
+            owner: "paul-dev-org",
+            repo: "bun-cdk",
+        },
+    ],
 });

@@ -10,8 +10,11 @@ import {
 import { SsmSecrets} from "../constructs/ssmSecrets";
 import { Services } from "../services";
 import { EcsService } from "../constructs/ecsService";
+import { EcrStack } from "./ecr-stack";
 
-type EcsStackProps = cdk.StackProps & Services;
+type EcsStackProps = cdk.StackProps & Services & {
+    ecrs: EcrStack;
+}
 
 export class EcsStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: EcsStackProps) {
@@ -55,6 +58,7 @@ export class EcsStack extends cdk.Stack {
             cluster,
             vpc,
             lb: alb,
+            ecr: props.ecrs.authServiceRepo,
         })
 
         new EcsService(this, "StripeService", {
@@ -67,6 +71,7 @@ export class EcsStack extends cdk.Stack {
             cluster,
             vpc,
             lb: alb,
+            ecr: props.ecrs.stripeServiceRepo,
         });
     }
 }

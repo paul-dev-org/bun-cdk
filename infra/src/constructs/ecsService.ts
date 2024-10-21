@@ -10,7 +10,11 @@ import {
 } from "aws-cdk-lib/aws-ecs";
 import { Duration } from "aws-cdk-lib";
 import { Peer, Port, SecurityGroup, Vpc } from "aws-cdk-lib/aws-ec2";
-import { ApplicationLoadBalancer, ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import {
+    ApplicationLoadBalancer,
+    ApplicationProtocol,
+} from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { Repository } from "aws-cdk-lib/aws-ecr";
 
 type ServiceProps = {
     serviceName: string;
@@ -20,22 +24,23 @@ type ServiceProps = {
     cpuLimit?: number;
     secrets?: { [key: string]: Secret };
     cluster: Cluster;
-    vpc: Vpc,
+    vpc: Vpc;
     lb: ApplicationLoadBalancer;
+    ecr: Repository;
 };
 
 export class EcsService extends Construct {
-
     constructor(scope: Construct, id: string, props: ServiceProps) {
         super(scope, id);
 
-        const sg = new SecurityGroup(
-            this,
-            `${id}SecurityGroup`,
-            { vpc: props.vpc }
-        );
+        const sg = new SecurityGroup(this, `${id}SecurityGroup`, {
+            vpc: props.vpc,
+        });
 
-        sg.addIngressRule(Peer.ipv4("0.0.0.0/0"), Port.tcp(props.containerPort));
+        sg.addIngressRule(
+            Peer.ipv4("0.0.0.0/0"),
+            Port.tcp(props.containerPort)
+        );
 
         const taskDef = new FargateTaskDefinition(this, `${id}TaskDef`);
         const container = taskDef.addContainer(props.serviceName, {
@@ -44,7 +49,7 @@ export class EcsService extends Construct {
             memoryLimitMiB: props.memoryLimit ?? 512,
             cpu: props.cpuLimit ?? 256,
             logging: LogDriver.awsLogs({ streamPrefix: props.serviceName }),
-/*            healthCheck: {
+            /*            healthCheck: {
                 command: [
                     "CMD-SHELL",
                     `curl -f http://localhost:${props.containerPort}/ || exit 1`
@@ -56,17 +61,33 @@ export class EcsService extends Construct {
             },*/
         });
 
+
         container.addPortMappings({
             containerPort: props.containerPort,
             protocol: Protocol.TCP,
         });
 
+        props.ecr.grantPull(container.taskDefinition.executionRole!);
+
         const service = new FargateService(this, "AuthService", {
             cluster: props.cluster,
             taskDefinition: taskDef,
             securityGroups: [sg],
+            circuitBreaker: {
+                enable: true,
+                rollback: true,
+            }
         });
 
+        const scaling = service.autoScaleTaskCount({
+            minCapacity: 1,
+            maxCapacity: 10,
+        });
+        scaling.scaleOnCpuUtilization("CpuScaling", {
+            targetUtilizationPercent: 60,
+            scaleInCooldown: Duration.seconds(60),
+            scaleOutCooldown: Duration.seconds(10),
+        });
 
         // LB Listener
         const authListener = props.lb.addListener(`${id}${props.serviceName}`, {
