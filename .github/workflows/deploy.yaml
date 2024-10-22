@@ -3,96 +3,68 @@ name: Deployment
 on:
   workflow_dispatch:
     inputs:
-      auth-service:
+      auth_service:
         description: 'Deploy auth-service'
         required: true
-        default: false
-        type: boolean
-      stripe-service:
+        type: string
+      stripe_service:
         description: 'Deploy stripe-service'
         required: true
-        default: false
-        type: boolean
-
-permissions:
-  contents: write
+        type: string
 
 jobs:
-  create-release-branch:
+  deploy-stg-auth-service:
     runs-on: ubuntu-latest
-    outputs:
-      branch_name: ${{ steps.set_branch.outputs.branch_name }}
+    environment: stg
+    if: ${{ inputs.auth_service == 'true' }}
+    concurrency:
+      group: stg-auth-service
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Git user
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create release branch
-        id: set_branch  # Added id to match outputs reference
-        run: |
-          BRANCH_NAME="release/$(date +'%Y-%m-%d-%H-%M')"
-          git checkout -b $BRANCH_NAME
-          git push origin $BRANCH_NAME
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
-  deploy-stg-auth-service:
-    needs: create-release-branch
-    runs-on: ubuntu-latest
-    environment: stg
-    if: ${{ github.event.inputs.auth-service == 'true' }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4  # Updated to v4
-        with:
-          ref: ${{ needs.create-release-branch.outputs.branch_name }}
-
       - name: Deploy auth-service
-        run: echo "Deploying to stg auth-service on ${{ needs.create-release-branch.outputs.branch_name }}"
+        run: echo "Deploying to stg auth-service on ${{ github.ref_name }}"
 
   deploy-prd-auth-service:
     needs: deploy-stg-auth-service
     runs-on: ubuntu-latest
     environment: prd
-
+    concurrency:
+      group: prd-auth-service
+      cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4  # Updated to v4
-        with:
-          ref: ${{ needs.create-release-branch.outputs.branch_name }}
+        uses: actions/checkout@v4
 
       - name: Deploy auth-service
-        run: echo "Deploying to prod auth-service on ${{ needs.create-release-branch.outputs.branch_name }}"
+        run: echo "Deploying to prod auth-service on ${{ github.ref_name }}"
 
   deploy-stg-stripe-service:
-    needs: create-release-branch
     runs-on: ubuntu-latest
     environment: stg
-    if: ${{ github.event.inputs.stripe-service == 'true' }}
-
+    if: ${{ inputs.stripe_service == 'true' }}
+    concurrency:
+      group: stg-stripe-service
+      cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4  # Updated to v4
-        with:
-          ref: ${{ needs.create-release-branch.outputs.branch_name }}
+        uses: actions/checkout@v4
 
       - name: Deploy stripe-service
-        run: echo "Deploying to stg stripe-service on ${{ needs.create-release-branch.outputs.branch_name }}"
+        run: echo "Deploying to stg stripe-service on ${{ github.ref_name }}"
 
   deploy-prd-stripe-service:
     needs: deploy-stg-stripe-service
     runs-on: ubuntu-latest
     environment: prd
-
+    concurrency:
+      group: prd-stripe-service
+      cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4  # Updated to v4
-        with:
-          ref: ${{ needs.create-release-branch.outputs.branch_name }}
+        uses: actions/checkout@v4
 
       - name: Deploy stripe-service
-        run: echo "Deploying to prod stripe-service on ${{ needs.create-release-branch.outputs.branch_name }}"
+        run: echo "Deploying to prod stripe-service on ${{ github.ref_name }}"
