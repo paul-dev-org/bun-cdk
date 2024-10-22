@@ -1,0 +1,90 @@
+name: Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      auth-service:
+        description: 'Deploy auth-service'
+        required: true
+        default: false
+        type: boolean
+      stripe-service:
+        description: 'Deploy stripe-service'
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  create-release-branch:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Create release branch
+          run: |
+            BRANCH_NAME="release/$(date +'%Y-%m-%d-%H-%M')"
+            git checkout -b $BRANCH_NAME
+            git push origin $BRANCH_NAME
+
+        - name: Set output
+          id: branch
+          run: echo "::set-output name=branch_name::$BRANCH_NAME"
+
+  deploy-stg-auth-service:
+    needs: create-release-branch
+    runs-on: ubuntu-latest
+    environment: stg
+    if: ${{ github.event.inputs.auth-service == 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.branch.outputs.branch_name }}
+
+      - name: Deploy auth-service
+        run: echo "Deploying to stg auth-service on ${{ steps.branch.outputs.branch_name }}"
+
+  deploy-prd-auth-service:
+    needs: deploy-stg-auth-service
+    runs-on: ubuntu-latest
+    environment: prd
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.branch.outputs.branch_name }}
+
+      - name: Deploy auth-service
+        run: echo "Deploying to prod auth-service on ${{ steps.branch.outputs.branch_name }}"
+
+  deploy-stg-stripe-service:
+    needs: create-release-branch
+    runs-on: ubuntu-latest
+    environment: stg
+    if: ${{ github.event.inputs.stripe-service == 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.branch.outputs.branch_name }}
+
+      - name: Deploy stripe-service
+        run: echo "Deploying to stg stripe-service on ${{ steps.branch.outputs.branch_name }}"
+
+  deploy-prd-stripe-service:
+    needs: deploy-stg-auth-service
+    runs-on: ubuntu-latest
+    environment: prd
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.branch.outputs.branch_name }}
+
+      - name: Deploy stripe-service
+        run: echo "Deploying to prod stripe-service on ${{ steps.branch.outputs.branch_name }}"
