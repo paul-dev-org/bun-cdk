@@ -20,24 +20,24 @@ permissions:
 jobs:
   create-release-branch:
     runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.set_branch.outputs.branch_name }}
     steps:
-        - name: Checkout
-          uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        - name: Set up Git user
-          run: |
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-        - name: Create release branch
-          run: |
-            BRANCH_NAME="release/$(date +'%Y-%m-%d-%H-%M')"
-            git checkout -b $BRANCH_NAME
-            git push origin $BRANCH_NAME
-
-        - name: Set output
-          id: branch
-          run: echo "::set-output name=branch_name::$BRANCH_NAME"
+      - name: Create release branch
+        id: set_branch  # Added id to match outputs reference
+        run: |
+          BRANCH_NAME="release/$(date +'%Y-%m-%d-%H-%M')"
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
   deploy-stg-auth-service:
     needs: create-release-branch
@@ -47,12 +47,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated to v4
         with:
-          ref: ${{ steps.branch.outputs.branch_name }}
+          ref: ${{ needs.create-release-branch.outputs.branch_name }}
 
       - name: Deploy auth-service
-        run: echo "Deploying to stg auth-service on ${{ steps.branch.outputs.branch_name }}"
+        run: echo "Deploying to stg auth-service on ${{ needs.create-release-branch.outputs.branch_name }}"
 
   deploy-prd-auth-service:
     needs: deploy-stg-auth-service
@@ -61,12 +61,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated to v4
         with:
-          ref: ${{ steps.branch.outputs.branch_name }}
+          ref: ${{ needs.create-release-branch.outputs.branch_name }}
 
       - name: Deploy auth-service
-        run: echo "Deploying to prod auth-service on ${{ steps.branch.outputs.branch_name }}"
+        run: echo "Deploying to prod auth-service on ${{ needs.create-release-branch.outputs.branch_name }}"
 
   deploy-stg-stripe-service:
     needs: create-release-branch
@@ -76,23 +76,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated to v4
         with:
-          ref: ${{ steps.branch.outputs.branch_name }}
+          ref: ${{ needs.create-release-branch.outputs.branch_name }}
 
       - name: Deploy stripe-service
-        run: echo "Deploying to stg stripe-service on ${{ steps.branch.outputs.branch_name }}"
+        run: echo "Deploying to stg stripe-service on ${{ needs.create-release-branch.outputs.branch_name }}"
 
   deploy-prd-stripe-service:
-    needs: deploy-stg-auth-service
+    needs: deploy-stg-stripe-service
     runs-on: ubuntu-latest
     environment: prd
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated to v4
         with:
-          ref: ${{ steps.branch.outputs.branch_name }}
+          ref: ${{ needs.create-release-branch.outputs.branch_name }}
 
       - name: Deploy stripe-service
-        run: echo "Deploying to prod stripe-service on ${{ steps.branch.outputs.branch_name }}"
+        run: echo "Deploying to prod stripe-service on ${{ needs.create-release-branch.outputs.branch_name }}"
